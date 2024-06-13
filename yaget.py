@@ -2,11 +2,8 @@ import os
 import argparse
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
-from langchain_community.llms import OpenAI  # Correct import for standard OpenAI models
+from langchain_community.chat_models import ChatOpenAI  # Correct import for chat models
 from langchain.chains import LLMChain
-from openai import OpenAI
-
-client = OpenAI()  # Import for new OpenAI Chat API
 
 def load_environment(dotenv_path=None):
     """
@@ -65,27 +62,30 @@ def scan_files_for_todos(project_directory, before_lines=2):
 
 def generate_prompts_and_snippets(todos, api_key):
     prompts_and_snippets = []
-
-    llm = OpenAI(openai_api_key=api_key, model_name='gpt-3.5-turbo')  # Correct model usage
+    
+    # Initialize LangChain's ChatOpenAI model
+    llm = ChatOpenAI(openai_api_key=api_key, model_name='gpt-3.5-turbo')  # Correct usage for chat models
     prompt_template = PromptTemplate(
-        template="For the TODO: '{todo}' in file {file_path}, considering the context:\n{context}\nGenerate an implementation suggestion.",
+        template="For the TODO: '{todo}' in file {file_path}, considering the context:\n{context}\nGenerate an implementation suggestion. Remove #TODO and #ENDTODO comments",
         input_variables=["todo", "context", "file_path"]
     )
     chain = LLMChain(llm=llm, prompt=prompt_template)
-
+    
     for todo, context, file_path in todos:
         context_snippet = ''.join(context)
         formatted_prompt = prompt_template.format(todo=todo, context=context_snippet, file_path=file_path)
-        # Create the ChatCompletion call manually
-        response = client.chat.completions.create(model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": formatted_prompt}
-        ],
-        api_key=api_key)
-        generated_text = response.choices[0].message['content'] if response and response.choices else "No suggestion generated."
+        
+        # Use LangChain's LLMChain to get the completion
+        response = chain.invoke({
+            "todo": todo,
+            "context": context_snippet,
+            "file_path": file_path
+        })
+        
+        # Extract the generated text from the response
+        generated_text = response["text"] if response and "text" in response else "No suggestion generated."
         prompts_and_snippets.append((formatted_prompt, generated_text))
-
+    
     return prompts_and_snippets
 
 def main():
