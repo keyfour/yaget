@@ -1,4 +1,5 @@
 import os
+import re
 import argparse
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
@@ -20,7 +21,7 @@ def load_environment(dotenv_path=None):
 
 def list_project_files(project_directory, extensions=None):
     if extensions is None:
-        extensions = ['.py', '.cpp', '.h', '.java']  # Default extensions
+        extensions = ['.py', '.cpp', '.h', '.java', '.js', '.html', '.sh']  # Default extensions
     files = []
     for root, dirs, filenames in os.walk(project_directory):
         for filename in filenames:
@@ -32,10 +33,26 @@ def read_file(file_path):
     with open(file_path, 'r') as file:
         return file.readlines()
 
+def is_todo_comment(line):
+    """
+    Check if a line contains a TODO comment.
+    Supports various comment styles.
+    """
+    # Match lines that start with common comment symbols and contain 'TODO', excluding 'ENDTODO'
+    return re.match(r'^\s*(#|//|<!--)\s*TODO(?!.*ENDTODO)', line)
+
+def is_endtodo_comment(line):
+    """
+    Check if a line contains an ENDTODO comment.
+    Supports various comment styles.
+    """
+    # Match lines that start with common comment symbols and contain 'ENDTODO'
+    return re.match(r'^\s*(#|//|<!--)\s*ENDTODO', line)
+
 def extract_todos(file_content, before_lines=2):
     todos = []
     for i, line in enumerate(file_content):
-        if 'TODO' in line and 'ENDTODO' not in line:
+        if is_todo_comment(line):
             context = capture_context(file_content, i, before_lines)
             todos.append((line.strip(), context))
     return todos
@@ -44,7 +61,7 @@ def capture_context(content, line_index, before_lines):
     start_index = max(line_index - before_lines, 0)
     context = content[start_index:line_index + 1]  # Include the TODO line itself
     for j in range(line_index + 1, len(content)):
-        if 'ENDTODO' in content[j]:
+        if is_endtodo_comment(content[j]):
             break
         context.append(content[j])
     return context
