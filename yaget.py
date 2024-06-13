@@ -2,7 +2,7 @@ import os
 import argparse
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
-from langchain_community.chat_models import ChatOpenAI  # Correct import for chat models
+from langchain_openai import ChatOpenAI  # Updated import for chat models
 from langchain.chains import LLMChain
 
 def load_environment(dotenv_path=None):
@@ -66,7 +66,8 @@ def generate_prompts_and_snippets(todos, api_key):
     # Initialize LangChain's ChatOpenAI model
     llm = ChatOpenAI(openai_api_key=api_key, model_name='gpt-3.5-turbo')  # Correct usage for chat models
     prompt_template = PromptTemplate(
-        template="For the TODO: '{todo}' in file {file_path}, considering the context:\n{context}\nGenerate an implementation suggestion. Remove #TODO and #ENDTODO comments",
+        template="For the TODO: '{todo}' in file {file_path}, considering the context:\n{context}\n"
+                 "Generate an implementation suggestion. Please remove #TODO and #ENDTODO comments.",
         input_variables=["todo", "context", "file_path"]
     )
     chain = LLMChain(llm=llm, prompt=prompt_template)
