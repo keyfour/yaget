@@ -4,6 +4,13 @@ import argparse
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI  # Updated import for chat models
+from rich.console import Console
+from rich.progress import track
+
+
+# Create a console object for rich printing
+console = Console()
+
 
 def load_environment(dotenv_path=None):
     """
@@ -16,8 +23,12 @@ def load_environment(dotenv_path=None):
 
     api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
+        console.print("[bold red]Error:[/bold red] OPENAI_API_KEY is not set in the .env file or environment.")
         raise ValueError("OPENAI_API_KEY is not set in the .env file or environment.")
+
+    console.print("[bold green]✔[/bold green] Environment variables loaded successfully.")
     return api_key
+
 
 def list_project_files(project_directory, extensions=None):
     if extensions is None:
@@ -29,9 +40,11 @@ def list_project_files(project_directory, extensions=None):
                 files.append(os.path.join(root, filename))
     return files
 
+
 def read_file(file_path):
     with open(file_path, 'r') as file:
         return file.readlines()
+
 
 def is_todo_comment(line):
     """
@@ -41,6 +54,7 @@ def is_todo_comment(line):
     # Match lines that start with common comment symbols and contain 'TODO', excluding 'ENDTODO'
     return re.match(r'^\s*(#|//|<!--)\s*TODO(?!.*ENDTODO)', line)
 
+
 def is_endtodo_comment(line):
     """
     Check if a line contains an ENDTODO comment.
@@ -49,6 +63,7 @@ def is_endtodo_comment(line):
     # Match lines that start with common comment symbols and contain 'ENDTODO'
     return re.match(r'^\s*(#|//|<!--)\s*ENDTODO', line)
 
+
 def extract_todos(file_content, before_lines=2):
     todos = []
     for i, line in enumerate(file_content):
@@ -56,6 +71,7 @@ def extract_todos(file_content, before_lines=2):
             context = capture_context(file_content, i, before_lines)
             todos.append((line.strip(), context))
     return todos
+
 
 def capture_context(content, line_index, before_lines):
     start_index = max(line_index - before_lines, 0)
@@ -66,17 +82,22 @@ def capture_context(content, line_index, before_lines):
         context.append(content[j])
     return context
 
+
 def scan_files_for_todos(project_directory, before_lines=2):
+    console.print(f"🔍 Scanning files in [bold]{project_directory}[/bold] for TODOs...", style="bold cyan")
     todos = []
     files = list_project_files(project_directory)
-    for file_path in files:
+    for file_path in track(files, description="Scanning files..."):
         content = read_file(file_path)
         file_todos = extract_todos(content, before_lines)
         for todo, context in file_todos:
             todos.append((todo, context, file_path))
+    console.print(f"[bold green]✔[/bold green] Found [bold]{len(todos)}[/bold] TODOs in the project.")
     return todos
 
+
 def generate_prompts_and_snippets(todos, api_key):
+    console.print("⚙️ [bold cyan]Generating prompts and code snippets from TODOs...[/bold cyan]")
     prompts_and_snippets = []
 
     # Initialize LangChain's ChatOpenAI model
@@ -90,8 +111,11 @@ def generate_prompts_and_snippets(todos, api_key):
     # Create a sequence combining the prompt and LLM using the pipe operator
     sequence = prompt_template | llm
 
-    for todo, context, file_path in todos:
+    for index, (todo, context, file_path) in enumerate(track(todos, description="Processing TODOs...")):
         context_snippet = ''.join(context)
+
+        # Inform the user about the current invocation
+        console.print(f"[bold blue]Processing TODO {index + 1}/{len(todos)}:[/bold blue] '{todo}' in file [bold]{file_path}[/bold]")
 
         # Execute the sequence to get the completion
         response = sequence.invoke({
@@ -119,7 +143,9 @@ def generate_prompts_and_snippets(todos, api_key):
 
         prompts_and_snippets.append(snippet_info)
 
+    console.print("[bold green]✔[/bold green] Generation of prompts and snippets completed.")
     return prompts_and_snippets
+
 
 def main():
     parser = argparse.ArgumentParser(description="Scan project files for TODOs and generate code suggestions.")
@@ -136,13 +162,16 @@ def main():
     prompts_and_snippets = generate_prompts_and_snippets(todos, api_key)
 
     # Print the results in a structured format
+    console.print("[bold yellow]Printing the results:[/bold yellow]")
     for snippet_info in prompts_and_snippets:
-        print(f"File: {snippet_info['file']}")
-        print(f"TODO: {snippet_info['todo']}")
-        print(f"Context:\n{snippet_info['context']}")
-        print("Generated Snippet:\n", snippet_info['generated_snippet'])
-        print(f"Metadata: {snippet_info['metadata_summary']}")
-        print("------\n")
+        console.print(f"[bold]File:[/bold] {snippet_info['file']}")
+        console.print(f"[bold]TODO:[/bold] {snippet_info['todo']}")
+        console.print(f"[bold]Context:[/bold]\n{snippet_info['context']}")
+        console.print("[bold]Generated Snippet:[/bold]\n", style="cyan")
+        console.print(snippet_info['generated_snippet'], style="green on black")
+        console.print(f"[bold]Metadata:[/bold] {snippet_info['metadata_summary']}")
+        console.print("------")
+
 
 if __name__ == "__main__":
     main()
