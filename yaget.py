@@ -35,7 +35,7 @@ def read_file(file_path):
 def extract_todos(file_content, before_lines=2):
     todos = []
     for i, line in enumerate(file_content):
-        if 'TODO' in line:
+        if 'TODO' in line and 'ENDTODO' not in line:
             context = capture_context(file_content, i, before_lines)
             todos.append((line.strip(), context))
     return todos
@@ -44,9 +44,9 @@ def capture_context(content, line_index, before_lines):
     start_index = max(line_index - before_lines, 0)
     context = content[start_index:line_index + 1]  # Include the TODO line itself
     for j in range(line_index + 1, len(content)):
-        context.append(content[j])
         if 'ENDTODO' in content[j]:
             break
+        context.append(content[j])
     return context
 
 def scan_files_for_todos(project_directory, before_lines=2):
