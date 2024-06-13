@@ -71,27 +71,34 @@ def is_endtodo_comment(line):
     return re.match(r'^\s*(#|//|<!--)\s*ENDTODO', line)
 
 
-def extract_todos(file_content, before_lines=2):
+def extract_todos(file_content, before_lines=2, max_lines_after=10):
     todos = []
     for i, line in enumerate(file_content):
         if is_todo_comment(line):
-            context = capture_context(file_content, i, before_lines)
+            context = capture_context(file_content, i, before_lines,
+                                      max_lines_after)
             todos.append((line.strip(), context))
     return todos
 
 
-def capture_context(content, line_index, before_lines):
+def capture_context(content, line_index, before_lines, max_lines_after):
+    """
+    Capture the context around a TODO comment.
+    """
     start_index = max(line_index - before_lines, 0)
     context = content[start_index:line_index +
                       1]  # Include the TODO line itself
-    for j in range(line_index + 1, len(content)):
+    for j in range(line_index + 1,
+                   min(line_index + 1 + max_lines_after, len(content))):
         if is_endtodo_comment(content[j]):
             break
         context.append(content[j])
     return context
 
 
-def scan_files_for_todos(project_directory, before_lines=2):
+def scan_files_for_todos(project_directory,
+                         before_lines=2,
+                         max_lines_after=10):
     console.print(
         f"🔍 Scanning files in [bold]{project_directory}[/bold] for TODOs...",
         style="bold cyan")
@@ -99,7 +106,7 @@ def scan_files_for_todos(project_directory, before_lines=2):
     files = list_project_files(project_directory)
     for file_path in track(files, description="Scanning files..."):
         content = read_file(file_path)
-        file_todos = extract_todos(content, before_lines)
+        file_todos = extract_todos(content, before_lines, max_lines_after)
         for todo, context in file_todos:
             todos.append((todo, context, file_path))
     console.print(
@@ -183,6 +190,12 @@ def main():
         type=int,
         default=2,
         help="Number of lines before TODO to include in the context")
+    parser.add_argument(
+        "--max_lines_after",
+        type=int,
+        default=10,
+        help="Maximum number of lines to follow after TODO in search of ENDTODO"
+    )
     parser.add_argument("--dotenv_path", help="Path to the .env file")
     args = parser.parse_args()
 
@@ -191,7 +204,8 @@ def main():
 
     # Scan files for TODOs and generate prompts and snippets
     todos = scan_files_for_todos(args.project_directory,
-                                 before_lines=args.before_lines)
+                                 before_lines=args.before_lines,
+                                 max_lines_after=args.max_lines_after)
     prompts_and_snippets = generate_prompts_and_snippets(todos, api_key)
 
     # Print the results in a structured format
