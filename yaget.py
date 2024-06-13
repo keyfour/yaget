@@ -3,7 +3,6 @@ import argparse
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI  # Updated import for chat models
-from langchain.chains import LLMChain
 
 def load_environment(dotenv_path=None):
     """
@@ -62,7 +61,7 @@ def scan_files_for_todos(project_directory, before_lines=2):
 
 def generate_prompts_and_snippets(todos, api_key):
     prompts_and_snippets = []
-    
+
     # Initialize LangChain's ChatOpenAI model
     llm = ChatOpenAI(openai_api_key=api_key, model_name='gpt-3.5-turbo')  # Correct usage for chat models
     prompt_template = PromptTemplate(
@@ -70,23 +69,39 @@ def generate_prompts_and_snippets(todos, api_key):
                  "Generate an implementation suggestion. Please remove #TODO and #ENDTODO comments.",
         input_variables=["todo", "context", "file_path"]
     )
-    chain = LLMChain(llm=llm, prompt=prompt_template)
-    
+
+    # Create a sequence combining the prompt and LLM using the pipe operator
+    sequence = prompt_template | llm
+
     for todo, context, file_path in todos:
         context_snippet = ''.join(context)
-        formatted_prompt = prompt_template.format(todo=todo, context=context_snippet, file_path=file_path)
-        
-        # Use LangChain's LLMChain to get the completion
-        response = chain.invoke({
+
+        # Execute the sequence to get the completion
+        response = sequence.invoke({
             "todo": todo,
             "context": context_snippet,
             "file_path": file_path
         })
-        
-        # Extract the generated text from the response
-        generated_text = response["text"] if response and "text" in response else "No suggestion generated."
-        prompts_and_snippets.append((formatted_prompt, generated_text))
-    
+
+        # Directly access attributes of the AIMessage object
+        generated_text = response.content if response else "No suggestion generated."
+        model_name = response.response_metadata.get('model_name', 'Unknown model') if hasattr(response, 'response_metadata') else 'Unknown model'
+        token_usage = response.response_metadata.get('token_usage', {}) if hasattr(response, 'response_metadata') else {}
+
+        # Summarize metadata
+        metadata_summary = f"Model: {model_name}, Tokens Used: {token_usage.get('total_tokens', 'N/A')}"
+
+        # Add useful metadata
+        snippet_info = {
+            "file": file_path,
+            "todo": todo,
+            "context": context_snippet.strip(),
+            "generated_snippet": generated_text.strip(),
+            "metadata_summary": metadata_summary
+        }
+
+        prompts_and_snippets.append(snippet_info)
+
     return prompts_and_snippets
 
 def main():
@@ -103,10 +118,13 @@ def main():
     todos = scan_files_for_todos(args.project_directory, before_lines=args.before_lines)
     prompts_and_snippets = generate_prompts_and_snippets(todos, api_key)
 
-    # Print the results
-    for prompt, snippet in prompts_and_snippets:
-        print("Prompt:\n", prompt)
-        print("Generated Snippet:\n", snippet)
+    # Print the results in a structured format
+    for snippet_info in prompts_and_snippets:
+        print(f"File: {snippet_info['file']}")
+        print(f"TODO: {snippet_info['todo']}")
+        print(f"Context:\n{snippet_info['context']}")
+        print("Generated Snippet:\n", snippet_info['generated_snippet'])
+        print(f"Metadata: {snippet_info['metadata_summary']}")
         print("------\n")
 
 if __name__ == "__main__":
