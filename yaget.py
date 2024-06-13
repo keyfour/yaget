@@ -36,15 +36,58 @@ def load_environment(dotenv_path=None):
     return api_key
 
 
-def list_project_files(project_directory, extensions=None):
+def load_ignore_list(project_directory):
+    """
+    Load the list of files or directories to ignore from a .yagetignore file.
+    """
+    ignore_list = []
+    ignore_file_path = os.path.join(project_directory, '.yagetignore')
+    if os.path.exists(ignore_file_path):
+        with open(ignore_file_path, 'r') as ignore_file:
+            ignore_list = [
+                line.strip() for line in ignore_file.readlines()
+                if line.strip() and not line.startswith('#')
+            ]
+        console.print(
+            f"[bold green]✔[/bold green] Loaded ignore list from {ignore_file_path}"
+        )
+    return ignore_list
+
+
+def should_ignore(path, ignore_list, project_directory):
+    """
+    Determine if a given path should be ignored based on the ignore list.
+    """
+    rel_path = os.path.relpath(path, project_directory)
+    for ignore_entry in ignore_list:
+        if ignore_entry.endswith('/'):
+            # Ignore directories and all files within them
+            if rel_path.startswith(ignore_entry.rstrip('/')):
+                return True
+        else:
+            # Ignore specific files
+            if rel_path == ignore_entry:
+                return True
+    return False
+
+
+def list_project_files(project_directory, ignore_list, extensions=None):
     if extensions is None:
         extensions = ['.py', '.cpp', '.h', '.java', '.js', '.html',
                       '.sh']  # Default extensions
     files = []
     for root, dirs, filenames in os.walk(project_directory):
+        # Remove directories from the scan if they are in the ignore list
+        dirs[:] = [
+            d for d in dirs if not should_ignore(os.path.join(
+                root, d), ignore_list, project_directory)
+        ]
         for filename in filenames:
-            if any(filename.endswith(ext) for ext in extensions):
-                files.append(os.path.join(root, filename))
+            file_path = os.path.join(root, filename)
+            if any(filename.endswith(ext)
+                   for ext in extensions) and not should_ignore(
+                       file_path, ignore_list, project_directory):
+                files.append(file_path)
     return files
 
 
@@ -97,13 +140,14 @@ def capture_context(content, line_index, before_lines, max_lines_after):
 
 
 def scan_files_for_todos(project_directory,
+                         ignore_list,
                          before_lines=2,
                          max_lines_after=10):
     console.print(
         f"🔍 Scanning files in [bold]{project_directory}[/bold] for TODOs...",
         style="bold cyan")
     todos = []
-    files = list_project_files(project_directory)
+    files = list_project_files(project_directory, ignore_list)
     for file_path in track(files, description="Scanning files..."):
         content = read_file(file_path)
         file_todos = extract_todos(content, before_lines, max_lines_after)
@@ -202,8 +246,12 @@ def main():
     # Load environment variables from the specified .env file
     api_key = load_environment(args.dotenv_path)
 
+    # Load the ignore list from .yagetignore
+    ignore_list = load_ignore_list(args.project_directory)
+
     # Scan files for TODOs and generate prompts and snippets
     todos = scan_files_for_todos(args.project_directory,
+                                 ignore_list,
                                  before_lines=args.before_lines,
                                  max_lines_after=args.max_lines_after)
     prompts_and_snippets = generate_prompts_and_snippets(todos, api_key)
