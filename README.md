@@ -1,9 +1,14 @@
+
 # Yaget (Yet-another-GenAI-tool)
 
 Yaget is a Python-based tool designed to enhance your codebase by scanning for `TODO` comments, capturing relevant context, and generating code suggestions using the LangChain library integrated with OpenAI’s powerful language models. This tool simplifies managing `TODO` items and provides valuable suggestions for code improvements.
 
+
+**🚧 Disclaimer:** Yaget is a **personal project** currently in an **early prototype** stage. It is developed for learning, experimentation, and personal use. As such, features may be incomplete, and functionality might be limited or subject to change. Please use it with this understanding. Feedback and suggestions are welcome as the project continues to evolve.
+
 ## Features
 
+...
 - **Project File Scanning**: Traverse through your project directory to locate files containing `TODO` comments.
 - **Context Capture**: Dynamically capture the context around `TODO` comments until an `ENDTODO` marker is reached.
 - **Prompt Generation**: Utilize LangChain to create detailed prompts based on the captured context.
