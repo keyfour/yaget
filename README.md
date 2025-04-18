@@ -1,19 +1,36 @@
+# YAGET - Yet Another Generator for Enhancing Tasks
 
-# Yaget (Yet-another-GenAI-tool)
+YAGET is a powerful, modular tool designed to analyze, understand, and enhance your codebase and documentation using modern LLM technologies. YAGET provides comprehensive project insights through semantic understanding of your code and documentation.
 
-Yaget is a Python-based tool designed to enhance your codebase by scanning for `TODO` comments, capturing relevant context, and generating code suggestions using the LangChain library integrated with OpenAI’s powerful language models. This tool simplifies managing `TODO` items and provides valuable suggestions for code improvements.
+**🚧 Disclaimer:** YAGET is a **personal project** that has evolved from a prototype into a more comprehensive tool. While significantly enhanced, it's still under active development. Features may be subject to change as the project continues to evolve. Feedback and suggestions are welcome!
 
+## Key Features
 
-**🚧 Disclaimer:** Yaget is a **personal project** currently in an **early prototype** stage. It is developed for learning, experimentation, and personal use. As such, features may be incomplete, and functionality might be limited or subject to change. Please use it with this understanding. Feedback and suggestions are welcome as the project continues to evolve.
+### Intelligent Scanning
 
-## Features
+- **Multiple Scanner Types**:
+  - **TODO Scanner**: Find and process TODO comments in code files
+  - **Code Scanner**: Analyze code structure, metrics, and patterns
+  - **PDF Scanner**: Extract and semantically understand PDF content
+  - **Text Scanner**: Process markdown, configuration files, and other text documents
 
-...
-- **Project File Scanning**: Traverse through your project directory to locate files containing `TODO` comments.
-- **Context Capture**: Dynamically capture the context around `TODO` comments until an `ENDTODO` marker is reached.
-- **Prompt Generation**: Utilize LangChain to create detailed prompts based on the captured context.
-- **AI-Powered Code Suggestions**: Generate actionable code snippets using OpenAI's language models.
-- **Flexible Configuration**: Customize the number of lines captured before `TODO` comments and specify file types for scanning.
+### Semantic Understanding
+
+- **Embeddings-Based Analysis**: Generate vector embeddings for documentation
+- **Context-Aware Responses**: Retrieve relevant project information during interactions
+- **Intelligent Caching**: Store scan results with automatic change detection
+
+### Interactive Capabilities
+
+- **Chat Mode**: Have conversations about your project with LLM assistance
+- **Implementation Suggestions**: Get code suggestions for TODOs and other improvements
+- **Project Documentation Insights**: Ask questions about your project's documentation
+
+### Flexible Architecture
+
+- **Multiple LLM Providers**: Support for both OpenAI and Ollama
+- **Modular Design**: Easily extendable with new scanners and features
+- **Configurable Behavior**: Fine-tune how scans are performed and results processed
 
 ## Installation
 
@@ -37,93 +54,105 @@ source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
 pip install -r requirements.txt
 ```
 
-### Step 4: Configure API Key
+### Step 4: Configure Environment
 
-Create a `.env` file in the project root directory and add your OpenAI API key:
+Create a `.env` file in the project root directory:
 
 ```
+# For OpenAI
+PROVIDER=openai
 OPENAI_API_KEY=your_openai_api_key
+MODEL=gpt-4
+
+# For Ollama (uncomment to use)
+# PROVIDER=ollama
+# OLLAMA_SERVER=http://localhost:11434
+# MODEL=llama3
 ```
 
 ## Usage
 
-### Command Line Interface
+### Scanning Your Project
 
-Run the script with the project directory and optional parameters for context lines:
-
-```bash
-python yaget.py /path/to/your/project --before_lines 3
-```
-
-### Arguments
-
-- `project_directory`: The path to the directory containing your project files.
-- `--before_lines`: (Optional) Number of lines before the `TODO` to include in the context. Default is 2 lines.
-
-### Example
-
-To scan a project at `/home/user/project` and include 3 lines before each `TODO`:
+Scan for TODOs, analyze code structure, and extract content from documents:
 
 ```bash
-python yaget.py /home/user/project --before_lines 3
+# Scan for TODOs and generate implementation suggestions
+python main.py scan --scan_todo /path/to/your/project --process
+
+# Comprehensive project analysis with embeddings
+python main.py scan --scan_todo --scan_code --scan_pdf --scan_text --use_embeddings /path/to/your/project
 ```
 
-### Output
+### Chat About Your Project
 
-Yaget generates detailed prompts and suggestions for each `TODO` found. Example output:
+Interact with your project using natural language:
 
+```bash
+# Start chat mode with project context
+python main.py chat /path/to/your/project
 ```
-Prompt:
- For the TODO: 'TODO: Refactor this function' in file /home/user/project/main.py, considering the context:
-def process_data(data):
-    # Initial processing steps
-    pass
-# ENDTODO
-Generate an implementation suggestion.
 
-Generated Snippet:
- Suggested implementation for TODO: 'TODO: Refactor this function':
-def process_data(data):
-    # Optimized processing steps
-    # TODO: Implement efficient sorting algorithm
-    pass
+In chat mode, you can ask questions about your codebase, documentation, and TODOs. The system uses the scanned data to provide informed responses.
+
+### Advanced Usage
+
+Configure scans with additional options:
+
+```bash
+# Custom file extensions for code scanning
+python main.py scan --scan_code --extensions .py .js .ts /path/to/your/project
+
+# Custom context lines for TODOs
+python main.py scan --scan_todo --before_lines 5 --max_lines_after 15 /path/to/your/project
 ```
+
+### Chat Mode Commands
+
+When using chat mode, the following commands are available:
+
+- `exit` or `quit`: End the chat session
+- `save`: Save the chat history to a file
+- `help`: Show help text
+- `scan todo`, `scan code`, `scan pdf`, or `scan text`: Run a scan operation from within chat
+- `scan text extensions=.txt,.md,.json`: Scan with custom extensions
 
 ## Project Structure
 
-- **yaget.py**: Main script to run the tool.
-- **requirements.txt**: List of dependencies.
-- **README.md**: This readme file.
-- **.env**: Environment file for storing API keys (not included in the repository).
+YAGET follows a modular architecture:
 
-## Development
+```
+yaget/
+├── models/              # LLM integration modules
+├── scanners/            # Scanner implementations
+├── utils/               # Utility functions
+├── chat/                # Chat mode implementation
+├── main.py              # Main entry point
+├── cli.py               # Command-line interface
+└── README.md            # This readme file
+```
 
-### Setup
+## Planned Features
 
-1. **Fork and Clone** the repository:
-   ```bash
-   git clone https://github.com/yourusername/yaget.git
-   cd yaget
-   ```
+Future development will focus on:
 
-2. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Create and Activate** a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-   ```
-
-### Running Tests
-
-Add tests to ensure functionality using frameworks like `unittest` or `pytest`.
+- **Document Editing**: Direct modification of files based on suggestions
+- **Refactoring Tools**: Automated code improvement capabilities
+- **Project Health Metrics**: Overall codebase quality assessment
+- **Multiple Language Support**: Enhanced understanding of various programming languages
+- **Integration with Development Tools**: IDE plugins and CI/CD support
 
 ## Contributions
 
-We welcome contributions! Please submit a pull request or open an issue with any suggestions or changes.
+Contributions are welcome! Please submit a pull request or open an issue with any suggestions or changes.
+
+To contribute:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
 ## License
 
@@ -131,11 +160,11 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Acknowledgements
 
-- **LangChain**: For providing the framework to integrate language models.
-- **OpenAI**: For the API enabling advanced AI-powered code suggestions.
+- **LangChain**: For providing the framework to integrate language models
+- **FAISS**: For efficient vector search capabilities
+- **PyPDF2**: For PDF content extraction
+- **Rich**: For beautiful terminal output
 
 ---
 
-For further details, visit the [LangChain Documentation](https://python.langchain.com/docs/) and [OpenAI Documentation](https://beta.openai.com/docs/).
-
-Feel free to [contact us](mailto:your.email@example.com) for support or inquiries.
+For more information or support, please open an issue on the GitHub repository.
